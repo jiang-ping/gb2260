@@ -7,7 +7,7 @@
 //    https://github.com/cn/GB2260/blob/develop/contrib/macao-201512.tsv
 // patch1来自 https://www.mca.gov.cn/article/sj/xzqh/2021/20211201.html
 // patch2加上了上一版删除的地区编码，以防止数据无法回显，新项目可以去掉已删除的地区
-// js比较可以先用https://novicelab.org/jsonabc/排序，再diff
+// js比较可以先用https://novicelab.org/jsonabc/ 排序，再diff
 //
 const stdSrc = `110000	北京市
 110101	   东城区						
@@ -3341,22 +3341,10 @@ for(const patchItem of patch) {
   }
 }
 
-/** 增加省直辖的县市 */
-const zx:any = {}
-kv.forEach(i => {
-  if( i[0].substring(2, 4) === "90" ){
-    zx[i[0].substring(0,4) + "00"] = 1
-  }
-})
-Object.keys(zx).forEach(k => {
-  kv.push([k, "省直辖"])
-})
-
-
 interface CodeNode {
   label: string;
   value: number;
-  children?: Node[];
+  children?: CodeNode[];
   disabled: boolean;
 }
 
@@ -3386,21 +3374,29 @@ function toKv(item: string[], children?:CodeNode[]){
 
 // 构造gb2260.json
 const result = kv.filter(i => i[0].endsWith("0000")).map(i => { // i是省
+  const provinceCode = i[0].substring(0, 2);
   // 本省的市和区
-  const cityAndDist = kv.filter(j => j[0].startsWith(i[0].substring(0, 2)) && j[0] !== i[0]);
+  const cityAndDist = kv.filter(j => 
+    (j[0].startsWith(provinceCode) && j[0] !== i[0]) //市和区
+  );
   // 本省的市
-  const citys = cityAndDist.filter(i => i[0].endsWith("00"));
-  
+  const citys = cityAndDist.filter(i => i[0].endsWith("00"))
+
+  // 省直辖的县
+  const provinceDirect = kv.filter(j => (j[0].startsWith(provinceCode + "90")))
+
   return toKv(
     i,
     citys.length === 0
       ? cityAndDist.map(i => toKv(i)) // 北上广重下面没有市
-      : citys.map(c => {
-          const dist = cityAndDist.filter(d => !d[0].endsWith("00") && d[0].startsWith(c[0].substring(0, 4)) ).map(i => toKv(i));
-          return toKv( c, dist )
-        })
+      : [
+          ... citys.map(c => {
+            const dist = cityAndDist.filter(d => !d[0].endsWith("00") && d[0].startsWith(c[0].substring(0, 4)) ).map(i => toKv(i));
+            return toKv( c, dist )
+          }),
+          ...provinceDirect.map(pd => toKv(pd))
+        ]
   )
-  
 })
 
 result.push(toKv(["0", "海外"]))

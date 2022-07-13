@@ -1,0 +1,9 @@
+{
+  "name": "gb2260",
+  "version": "0.0.1",
+  "license": "UNLICENSED",
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "^4.7.4"
+  }
+}
